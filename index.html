@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Walk Scene</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script>
+        const canvas = document.createElement('canvas');
+        document.body.appendChild(canvas);
+        const ctx = canvas.getContext('2d');
+        const width = 800;
+        const height = 600;
+        canvas.width = width;
+        canvas.height = height;
+        
+        const world = {
+            ground: { x: 0, y: 400, w: 800, h: 200 },
+            prop: { x: 300, y: 350, w: 100, h: 150 }
+        };
+        
+        const character = {
+            x: 100,
+            y: 450,
+            w: 30,
+            h: 50,
+            speed: 200,
+            direction: 0,
+            keys: new Set()
+        };
+        
+        function simulate(dt) {
+            const move = { x: 0, y: 0 };
+            const speed = character.speed * dt;
+            
+            if (character.keys.has('ArrowLeft') || character.keys.has('a')) {
+                move.x -= speed;
+            }
+            if (character.keys.has('ArrowRight') || character.keys.has('d')) {
+                move.x += speed;
+            }
+            if (character.keys.has('ArrowUp') || character.keys.has('w')) {
+                move.y -= speed;
+            }
+            if (character.keys.has('ArrowDown') || character.keys.has('s')) {
+                move.y += speed;
+            }
+            
+            const dx = move.x * Math.cos(character.direction) - move.y * Math.sin(character.direction);
+            const dy = move.x * Math.sin(character.direction) + move.y * Math.cos(character.direction);
+            
+            const newX = character.x + dx;
+            const newY = character.y + dy;
+            
+            // Normalize input before applying speed
+            const norm = Math.hypot(move.x, move.y);
+            if (norm > 0) {
+                move.x /= norm;
+                move.y /= norm;
+            }
+            
+            // Clamp to map boundaries
+            const clampedX = Math.max(world.ground.x, Math.min(newX, world.ground.x + world.ground.w - character.w));
+            const clampedY = Math.max(world.ground.y, Math.min(newY, world.ground.y + world.ground.h - character.h));
+            
+            // Check prop collision
+            if (clampedX < world.prop.x + world.prop.w &&
+                clampedX + character.w > world.prop.x &&
+                clampedY < world.prop.y + world.prop.h &&
+                clampedY + character.h > world.prop.y) {
+                // Collision with prop, do not move
+                return;
+            }
+            
+            character.x = clampedX;
+            character.y = clampedY;
+        }
+        
+        function paint() {
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+            
+            // Draw ground
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(world.ground.x, world.ground.y, world.ground.w, world.ground.h);
+            
+            // Draw prop
+            ctx.fillStyle = '#A0522D';
+            ctx.fillRect(world.prop.x, world.prop.y, world.prop.w, world.prop.h);
+            
+            // Draw character
+            ctx.fillStyle = '#FFD700';
+            ctx.fillRect(character.x, character.y, character.w, character.h);
+            
+            // Draw direction cue
+            ctx.strokeStyle = '#000000';
+            ctx.beginPath();
+            ctx.moveTo(character.x + character.w / 2, character.y + character.h / 2);
+            ctx.lineTo(character.x + character.w / 2 + Math.cos(character.direction) * 20, character.y + character.h / 2 + Math.sin(character.direction) * 20);
+            ctx.stroke();
+        }
+        
+        function frame(now) {
+            const dt = now - lastTime;
+            simulate(dt / 1000);
+            paint();
+            requestAnimationFrame(frame);
+        }
+        
+        let lastTime = performance.now();
+        requestAnimationFrame(frame);
+        
+        // Key listeners
+        document.addEventListener('keydown', (e) => {
+            if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'a', 'd', 'w', 's'].includes(e.key)) {
+                character.keys.add(e.key);
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'a', 'd', 'w', 's'].includes(e.key)) {
+                character.keys.delete(e.key);
+            }
+        });
+        
+        // Clear keys on blur
+        window.addEventListener('blur', () => {
+            character.keys.clear();
+        });
+    </script>
+</body>
+</html>
